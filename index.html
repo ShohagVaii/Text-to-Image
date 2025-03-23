@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI ইমেজ জেনারেটর | ©SHOHAG VAII</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 20px;
+            background-color: #f4f4f4;
+            color: #333;
+            position: relative;
+            min-height: 100vh;
+        }
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, #ff9a9e, #fad0c4, #fbc2eb, #a6c1ee, #fbc2eb, #ff9a9e);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+            z-index: -1;
+        }
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        input, select {
+            width: 300px;
+            padding: 10px;
+            margin: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            padding: 10px 15px;
+            border: none;
+            background-color: #28a745;
+            color: white;
+            cursor: pointer;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+        #loading {
+            display: none;
+            margin-top: 20px;
+        }
+        #image-container {
+            margin: 20px auto;
+            max-width: 90%;
+            max-height: 70vh;
+            border: 2px solid #ccc;
+            border-radius: 10px;
+            padding: 10px;
+            background-color: #fff;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        #generated-image {
+            max-width: 100%;
+            max-height: 100%;
+            border-radius: 5px;
+            display: none;
+        }
+        #download-btn, #edit-btn {
+            display: none;
+            margin-top: 10px;
+            background-color: #007bff;
+        }
+        #download-btn:hover, #edit-btn:hover {
+            background-color: #0056b3;
+        }
+        #credit {
+            margin-top: 30px;
+            font-size: 14px;
+            color: gray;
+        }
+        .suggestions {
+            margin: 10px;
+        }
+        .suggestions button {
+            margin: 5px;
+            background-color: #ffc107;
+            color: #000;
+        }
+        .suggestions button:hover {
+            background-color: #e0a800;
+        }
+        .format-options {
+            margin: 10px;
+        }
+        .history-item {
+            margin: 10px;
+            display: inline-block;
+        }
+        .history-item img {
+            max-width: 100px;
+            cursor: pointer;
+        }
+        .image-info {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #555;
+        }
+        #history-container {
+            display: none;
+            margin-top: 20px;
+        }
+        #history-container.visible {
+            display: block;
+        }
+        .contact-option {
+            margin-top: 20px;
+        }
+        .contact-option a {
+            color: #007bff;
+            text-decoration: none;
+        }
+        .contact-option a:hover {
+            text-decoration: underline;
+        }
+        .local-storage-options {
+            margin: 10px;
+        }
+        .report-generation-options {
+            margin: 10px;
+        }
+        .error-message {
+            color: red;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>AI ইমেজ জেনারেটর</h2>
+    <p>আপনার কাঙ্খিত ইমেজের জন্য প্রম্পট লিখুন:</p>
+    
+    <input type="text" id="prompt" placeholder="প্রম্পট লিখুন...">
+    <button onclick="generateImage()">ইমেজ তৈরি করুন</button>
+
+    <div class="suggestions">
+        <p>প্রম্পট সাজেশন:</p>
+        <button onclick="setPrompt('Create a stunning sunset with a sky of golden, orange, pink, and purple hues. The sun nears the horizon, reflecting on a calm sea with a mirror-like shimmer. Distant mountains or trees form soft silhouettes, while small boats drift along the shore. Light, feathery clouds glow with sunset colors, crafting a peaceful, dreamy, Instagram-worthy scene.')">সূর্যাস্ত</button>
+        <button onclick="setPrompt('Design a sleek, futuristic spaceship for deep space exploration with a triangular shape, dark silver exterior, and neon blue-red light streaks. Feature a large circular glass window at the front with a glowing control room, solar panels and antennas on the sides, and powerful engines with blue-white flames at the rear. Set it against a starry black space background with a distant nebula, creating a cinematic, epic vibe.')">মহাকাশযান</button>
+        <button onclick="setPrompt('Create six stunning images of a dense jungle, highlighting its wild beauty with tall trees, thick vines, and exotic plants like orchids and ferns. A clear river reflects the greenery, with misty air adding mystery. Include subtle wildlife hints—like a leopard’s tail or parrots—without focusing on them. Use varied lighting from sunrise to twilight for a dynamic, Instagram-worthy vibe. ')">জঙ্গল</button>
+    </div>
+
+    <div id="loading">
+        <p>⏳ ইমেজ তৈরি হচ্ছে, অনুগ্রহ করে অপেক্ষা করুন...</p>
+        <div class="loader"></div>
+    </div>
+
+    <div id="image-container">
+        <canvas id="canvas"></canvas>
+    </div>
+
+    <div class="image-info">
+        <p id="image-tags"></p>
+        <p id="image-description"></p>
+    </div>
+
+    <div class="format-options">
+        <select id="format">
+            <option value="png">PNG</option>
+            <option value="jpeg">JPEG</option>
+            <option value="webp">WEBP</option>
+        </select>
+        <button id="download-btn" onclick="downloadImage()">📥 ডাউনলোড করুন</button>
+    </div>
+
+    <button onclick="toggleHistory()">📂 ইমেজ হিস্টরি দেখুন</button>
+    <div id="history-container">
+        <h3>ইমেজ হিস্টরি</h3>
+        <div id="history-list"></div>
+    </div>
+
+    <div class="local-storage-options">
+        <button onclick="saveToLocalStorage()">লোকাল স্টোরেজে সেভ করুন</button>
+        <button onclick="loadFromLocalStorage()">লোকাল স্টোরেজ থেকে লোড করুন</button>
+    </div>
+
+    <div class="report-generation-options">
+        <button onclick="generateReport()">রিপোর্ট জেনারেট করুন</button>
+    </div>
+
+    <div class="contact-option">
+        <p>যোগাযোগ করুন: <a href="https://t.me/fake_tech_bd/" target="_blank">Telegram</a></p>
+    </div>
+
+    <p id="credit">Made with ❤️ by Shohag Vaii</p>
+
+    <script>
+        let history = [];
+        let originalImageSrc = "";
+
+        function setPrompt(prompt) {
+            document.getElementById("prompt").value = prompt;
+        }
+
+        function generateImage() {
+            let prompt = document.getElementById("prompt").value;
+            if (prompt.trim() === "") {
+                alert("দয়া করে একটি প্রম্পট লিখুন!");
+                return;
+            }
+
+            let apiUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}`;
+            let loadingElement = document.getElementById("loading");
+            let canvas = document.getElementById("canvas");
+            let downloadBtn = document.getElementById("download-btn");
+
+            loadingElement.style.display = "block";
+            downloadBtn.style.display = "none";
+
+            let img = new Image();
+            img.crossOrigin = "Anonymous";
+            img.src = apiUrl;
+            
+            img.onload = function () {
+                loadingElement.style.display = "none";
+                
+                let ctx = canvas.getContext("2d");
+                let cropHeight = img.height - 50;
+
+                let container = document.getElementById("image-container");
+                let aspectRatio = img.width / cropHeight;
+                canvas.width = container.clientWidth;
+                canvas.height = container.clientWidth / aspectRatio;
+
+                ctx.drawImage(img, 0, 0, img.width, cropHeight, 0, 0, canvas.width, canvas.height);
+
+                ctx.font = "27px Arial";
+                ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
+                ctx.fillText("©SHOHAG VAII  ", canvas.width - 200, canvas.height - 20);
+
+                originalImageSrc = img.src;
+
+                generateImageTags(prompt);
+                generateImageDescription(prompt);
+
+                history.push({
+                    src: canvas.toDataURL("image/png", 1.0),
+                    prompt: prompt,
+                    tags: document.getElementById("image-tags").innerText,
+                    description: document.getElementById("image-description").innerText
+                });
+                updateHistory();
+
+                downloadBtn.style.display = "inline-block";
+            };
+
+            img.onerror = function () {
+                loadingElement.style.display = "none";
+                showError("ইমেজ তৈরি করতে সমস্যা হয়েছে। দয়া করে আবার চেষ্টা করুন।");
+            };
+        }
+
+        function downloadImage() {
+            let format = document.getElementById("format").value;
+            let mimeType = `image/${format}`;
+            let quality = 1.0;
+
+            let img = new Image();
+            img.crossOrigin = "Anonymous";
+            img.src = originalImageSrc;
+
+            img.onload = function () {
+                let canvas = document.createElement("canvas");
+                let ctx = canvas.getContext("2d");
+                let cropHeight = img.height - 50;
+
+                canvas.width = img.width;
+                canvas.height = cropHeight;
+                ctx.drawImage(img, 0, 0, img.width, cropHeight, 0, 0, img.width, cropHeight);
+
+                ctx.font = "27px Arial";
+                ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
+                ctx.fillText("©SHOHAG VAII  ", img.width - 200, cropHeight - 20);
+
+                let downloadLink = document.createElement("a");
+                downloadLink.href = canvas.toDataURL(mimeType, quality);
+                downloadLink.download = `generated_image.${format}`;
+                downloadLink.click();
+            };
+        }
+
+        function generateImageTags(prompt) {
+            let tags = prompt.split(" ").filter(word => word.length > 3).join(", ");
+            document.getElementById("image-tags").innerText = `ট্যাগ: ${tags}`;
+        }
+
+        function generateImageDescription(prompt) {
+            let description = `এই ছবিটি "${prompt}" প্রম্পট ব্যবহার করে তৈরি করা হয়েছে।`;
+            document.getElementById("image-description").innerText = `বিবরণ: ${description}`;
+        }
+
+        function updateHistory() {
+            let historyList = document.getElementById("history-list");
+            historyList.innerHTML = "";
+            history.forEach((item, index) => {
+                let img = document.createElement("img");
+                img.src = item.src;
+                img.onclick = () => openImage(item);
+                let historyItem = document.createElement("div");
+                historyItem.className = "history-item";
+                historyItem.appendChild(img);
+                historyList.appendChild(historyItem);
+            });
+        }
+
+        function openImage(item) {
+            let newWindow = window.open();
+            newWindow.document.write(`
+                <img src="${item.src}" style="max-width: 100%;">
+                <p><strong>প্রম্পট:</strong> ${item.prompt}</p>
+                <p><strong>ট্যাগ:</strong> ${item.tags}</p>
+                <p><strong>বিবরণ:</strong> ${item.description}</p>
+            `);
+        }
+
+        function toggleHistory() {
+            let historyContainer = document.getElementById("history-container");
+            historyContainer.classList.toggle("visible");
+        }
+
+        function saveToLocalStorage() {
+            localStorage.setItem("imageHistory", JSON.stringify(history));
+            alert("ইমেজ হিস্টরি লোকাল স্টোরেজে সেভ করা হয়েছে!");
+        }
+
+        function loadFromLocalStorage() {
+            let savedHistory = localStorage.getItem("imageHistory");
+            if (savedHistory) {
+                history = JSON.parse(savedHistory);
+                updateHistory();
+                alert("ইমেজ হিস্টরি লোকাল স্টোরেজ থেকে লোড করা হয়েছে!");
+            } else {
+                showError("কোন সেভ করা ইমেজ হিস্টরি পাওয়া যায়নি।");
+            }
+        }
+
+        function generateReport() {
+            let report = `ইমেজ জেনারেশন রিপোর্ট:\n\n`;
+            report += `মোট ইমেজ জেনারেট হয়েছে: ${history.length}\n`;
+            report += `সর্বশেষ প্রম্পট: ${history[history.length - 1].prompt}\n`;
+            report += `সর্বশেষ ট্যাগ: ${history[history.length - 1].tags}\n`;
+            report += `সর্বশেষ বিবরণ: ${history[history.length - 1].description}\n`;
+            alert(report);
+        }
+
+        function showError(message) {
+            let errorMessage = document.createElement("div");
+            errorMessage.className = "error-message";
+            errorMessage.innerText = message;
+            document.body.appendChild(errorMessage);
+            setTimeout(() => {
+                errorMessage.remove();
+            }, 3000);
+        }
+    </script>
+
+</body>
+</html>
